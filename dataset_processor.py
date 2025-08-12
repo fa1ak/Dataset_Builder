@@ -1,271 +1,216 @@
 import chainlit as cl
 import os
+import json
 import tempfile
 from pathlib import Path
 from typing import List, Dict, Any
-import json
-import pandas as pd
-
-# Import unstructured components
 from unstructured.partition.auto import partition
-from unstructured.staging.base import convert_to_dict
-from unstructured.documents.elements import Text, Title, NarrativeText, ListItem, Table
+from unstructured.documents.elements import Title, NarrativeText, ListItem, Table, Header, Footer, Text
 
-# Configuration
-SUPPORTED_FORMATS = [
-    '.pdf', '.docx', '.txt', '.md', '.html', '.jpg', '.jpeg', '.png', 
-    '.tiff', '.bmp', '.csv', '.xlsx', '.pptx'
-]
+# Global variable to store results (since cl.get_session() doesn't exist in this version)
+processed_results = []
 
 @cl.on_chat_start
 async def start():
-    """Initialize the dataset processing app"""
+    """Initialize the chat session"""
     
-    # Create welcome message with app description
-    welcome_msg = """🚀 **Dataset Processing Tool with Unstructured**
-
-This tool helps you process and extract structured data from various document types using the power of unstructured library.
-
-**Supported Formats:**
-• **Documents**: PDF, DOCX, TXT, MD, HTML
-• **Images**: JPG, PNG, TIFF, BMP (with OCR)
-• **Spreadsheets**: CSV, XLSX
-• **Presentations**: PPTX
-
-**Features:**
-• Drag & drop file uploads
-• Text extraction and structure analysis
-• Export results in multiple formats
-• Batch processing capabilities
+    # Welcome message with instructions
+    welcome_msg = """🚀 **Welcome to Dataset Processor!**
 
 **How to use:**
-1. **Upload files** using the file upload button below
-2. **Type 'process'** to start processing uploaded files
-3. **Type 'export'** to download your processed results
-4. **Type 'help'** for detailed instructions
-5. **Type 'demo'** to see a sample processing workflow
+1. **Process files**: Type `process /path/to/your/file.pdf` (or any supported format)
+2. **View results**: Type `show` to see extracted content
+3. **Export data**: Type `export` to download results
+4. **Get help**: Type `help` for more options
 
-**File Upload:**
-Use the file upload button below to add your documents. You can upload multiple files at once!
+**Supported formats**: PDF, DOCX, TXT, JPG, PNG, and more!
 
-Ready to process some documents? 🎯"""
+**Example**: `process /Users/username/Documents/resume.pdf`
+
+Type `help` for detailed instructions or start processing a file!"""
     
     await cl.Message(content=welcome_msg).send()
-    
-    # Create file upload button
-    await cl.Message(
-        content="📁 **Upload Your Files**",
-        elements=[
-            cl.File(
-                name="upload_files",
-                path="",
-                display="inline",
-                description="Click to upload files for processing"
-            )
-        ]
-    ).send()
-
-async def process_uploaded_files():
-    """Process all uploaded files in the session"""
-    
-    files = cl.get_session().files
-    if not files:
-        await cl.Message(content="❌ No files uploaded yet. Please upload some files first using the file upload button.").send()
-        return
-    
-    await cl.Message(content=f"🔄 Starting to process {len(files)} files...").send()
-    
-    results = []
-    for i, file in enumerate(files):
-        await cl.Message(content=f"📄 Processing file {i+1}/{len(files)}: {file.name}").send()
-        
-        try:
-            result = await process_single_file(file)
-            results.append(result)
-            
-            # Show progress
-            progress_msg = f"✅ Completed: {file.name}"
-            if result.get('word_count'):
-                progress_msg += f" ({result['word_count']} words)"
-            await cl.Message(content=progress_msg).send()
-            
-        except Exception as e:
-            error_msg = f"❌ Error processing {file.name}: {str(e)}"
-            await cl.Message(content=error_msg).send()
-    
-    # Store results in session
-    cl.get_session().user_session["processed_results"] = results
-    
-    # Summary
-    if results:
-        total_words = sum(r.get('word_count', 0) for r in results)
-        summary_msg = f"""🎉 **Processing Complete!**
-
-**Summary:**
-• Files processed: {len(results)}
-• Total words extracted: {total_words:,}
-• Successful extractions: {len([r for r in results if r.get('success')])}
-
-Use 'export' to download your processed data!"""
-        
-        await cl.Message(content=summary_msg).send()
-    else:
-        await cl.Message(content="❌ No files were successfully processed.").send()
-
-async def process_single_file(file: cl.File) -> Dict[str, Any]:
-    """Process a single file and return structured results"""
-    
-    # Create temporary file path
-    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.name).suffix) as tmp_file:
-        tmp_file.write(file.content)
-        tmp_path = tmp_file.name
-    
-    try:
-        # Process with unstructured
-        elements = partition(tmp_path)
-        
-        # Convert to structured format
-        structured_data = []
-        word_count = 0
-        
-        for element in elements:
-            element_dict = convert_to_dict(element)
-            
-            # Extract text content
-            if hasattr(element, 'text'):
-                text = element.text
-                word_count += len(text.split())
-            else:
-                text = str(element)
-                word_count += len(text.split())
-            
-            # Determine element type
-            element_type = "text"
-            if isinstance(element, Title):
-                element_type = "title"
-            elif isinstance(element, NarrativeText):
-                element_type = "narrative"
-            elif isinstance(element, ListItem):
-                element_type = "list_item"
-            elif isinstance(element, Table):
-                element_type = "table"
-            
-            structured_data.append({
-                'type': element_type,
-                'text': text,
-                'metadata': element_dict.get('metadata', {}),
-                'coordinates': element_dict.get('coordinates', None)
-            })
-        
-        # Clean up temp file
-        os.unlink(tmp_path)
-        
-        return {
-            'success': True,
-            'filename': file.name,
-            'file_size': len(file.content),
-            'word_count': word_count,
-            'elements': structured_data,
-            'element_count': len(structured_data),
-            'file_type': Path(file.name).suffix.lower()
-        }
-        
-    except Exception as e:
-        # Clean up temp file on error
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
-        raise e
 
 async def process_files_from_paths(file_paths: List[str]):
-    """Process files from file paths (alternative method)"""
+    """Process files from file paths with real-time progress"""
+    
+    global processed_results # Access the global variable
     
     if not file_paths:
-        await cl.Message(content="❌ No file paths provided. Please provide valid file paths.").send()
+        await cl.Message(content="❌ No file paths provided.").send()
         return
     
-    await cl.Message(content=f"🔄 Starting to process {len(file_paths)} files...").send()
+    # Validate file paths
+    valid_paths = []
+    for path in file_paths:
+        if os.path.exists(path):
+            valid_paths.append(path)
+        else:
+            await cl.Message(content=f"⚠️ **Warning**: File not found: {path}").send()
+    
+    if not valid_paths:
+        await cl.Message(content="❌ No valid file paths found. Please check your paths and try again.").send()
+        return
+    
+    await cl.Message(content=f"🔄 **Starting to process {len(valid_paths)} files...**").send()
     
     results = []
-    for i, file_path in enumerate(file_paths):
-        file_path = file_path.strip()
-        if not os.path.exists(file_path):
-            await cl.Message(content=f"❌ File not found: {file_path}").send()
-            continue
-            
-        await cl.Message(content=f"📄 Processing file {i+1}/{len(file_paths)}: {os.path.basename(file_path)}").send()
-        
+    total_files = len(valid_paths)
+    
+    for i, file_path in enumerate(valid_paths):
         try:
+            await cl.Message(content=f"📄 **Processing file {i+1}/{total_files}**: {os.path.basename(file_path)}").send()
+            
+            # Process the file
             result = await process_single_file_from_path(file_path)
             results.append(result)
             
-            # Show progress
-            progress_msg = f"✅ Completed: {os.path.basename(file_path)}"
-            if result.get('word_count'):
-                progress_msg += f" ({result['word_count']} words)"
-            await cl.Message(content=progress_msg).send()
+            await cl.Message(content=f"✅ **Successfully processed**: {os.path.basename(file_path)}").send()
             
         except Exception as e:
-            error_msg = f"❌ Error processing {os.path.basename(file_path)}: {str(e)}"
+            error_msg = f"❌ **Error processing {os.path.basename(file_path)}**: {str(e)}"
             await cl.Message(content=error_msg).send()
+            continue
     
-    # Store results in session
-    cl.get_session().user_session["processed_results"] = results
+    # Store results globally
+    processed_results = results
     
     # Summary
-    if results:
-        total_words = sum(r.get('word_count', 0) for r in results)
-        summary_msg = f"""🎉 **Processing Complete!**
+    successful = len([r for r in results if r.get('success', False)])
+    total_elements = sum([r.get('element_count', 0) for r in results if r.get('success', False)])
+    
+    summary_msg = f"""📊 **Processing Complete!**
 
 **Summary:**
-• Files processed: {len(results)}
-• Total words extracted: {total_words:,}
-• Successful extractions: {len([r for r in results if r.get('success')])}
+• Files processed: {len(valid_paths)}
+• Successfully processed: {successful}
+• Total elements extracted: {total_elements}
 
-Use 'export' to download your processed data!"""
-        
-        await cl.Message(content=summary_msg).send()
-    else:
-        await cl.Message(content="❌ No files were successfully processed.").send()
+**Next steps:**
+• Type `show` to preview extracted content
+• Type `export` to download results
+• Type `process /path/to/another/file` to process more files"""
+    
+    await cl.Message(content=summary_msg).send()
 
 async def process_single_file_from_path(file_path: str) -> Dict[str, Any]:
     """Process a single file from path and return structured results"""
-    
+
     try:
+        # Show OCR warning for images
+        file_ext = Path(file_path).suffix.lower()
+        if file_ext in ['.jpg', '.jpeg', '.png', '.tiff', '.bmp']:
+            await cl.Message(content="🔍 **OCR Processing**: This is an image file. OCR text extraction may take a moment...").send()
+        
         # Process with unstructured
         elements = partition(file_path)
         
-        # Convert to structured format
+        # Show processing progress
+        await cl.Message(content=f"📊 **Analyzing structure**: Found {len(elements)} content elements...").send()
+        
+        # Convert to structured format with better error handling
         structured_data = []
         word_count = 0
+        processed_count = 0
+        skipped_count = 0
         
-        for element in elements:
-            element_dict = convert_to_dict(element)
-            
-            # Extract text content
-            if hasattr(element, 'text'):
-                text = element.text
+        for i, element in enumerate(elements):
+            try:
+                # Extract text content safely
+                text = ""
+                if hasattr(element, 'text') and element.text is not None:
+                    text = str(element.text).strip()
+                elif hasattr(element, '__str__'):
+                    text = str(element).strip()
+                
+                # Skip if no meaningful text
+                if not text or len(text) < 2:
+                    continue
+                
+                # Determine element type safely
+                element_type = "unknown"
+                if isinstance(element, Title):
+                    element_type = "title"
+                elif isinstance(element, NarrativeText):
+                    element_type = "narrative"
+                elif isinstance(element, ListItem):
+                    element_type = "list_item"
+                elif isinstance(element, Table):
+                    element_type = "table"
+                elif isinstance(element, Header):
+                    element_type = "header"
+                elif isinstance(element, Footer):
+                    element_type = "footer"
+                elif isinstance(element, Text):
+                    element_type = "text"
+                else:
+                    # Try to get class name for unknown types
+                    class_name = element.__class__.__name__
+                    element_type = class_name.lower()
+                
+                # Extract metadata safely
+                metadata = {}
+                try:
+                    if hasattr(element, 'metadata') and element.metadata is not None:
+                        if hasattr(element.metadata, 'to_dict'):
+                            metadata = element.metadata.to_dict()
+                        elif hasattr(element.metadata, '__dict__'):
+                            metadata = {k: v for k, v in element.metadata.__dict__.items() 
+                                      if not k.startswith('_') and v is not None}
+                        else:
+                            metadata = dict(element.metadata)
+                except Exception:
+                    metadata = {}
+                
+                # Extract coordinates safely
+                coordinates = None
+                try:
+                    if hasattr(element, 'coordinates') and element.coordinates is not None:
+                        if hasattr(element.coordinates, 'to_dict'):
+                            coordinates = element.coordinates.to_dict()
+                        elif hasattr(element.coordinates, '__dict__'):
+                            coordinates = {k: v for k, v in element.coordinates.__dict__.items() 
+                                         if not k.startswith('_') and v is not None}
+                        else:
+                            coordinates = dict(element.coordinates)
+                except Exception:
+                    coordinates = None
+                
+                # Add to structured data
+                structured_data.append({
+                    'type': element_type,
+                    'text': text,
+                    'metadata': metadata,
+                    'coordinates': coordinates,
+                    'element_index': i
+                })
+                
+                # Update counts
                 word_count += len(text.split())
-            else:
-                text = str(element)
-                word_count += len(text.split())
-            
-            # Determine element type
-            element_type = "text"
-            if isinstance(element, Title):
-                element_type = "title"
-            elif isinstance(element, NarrativeText):
-                element_type = "narrative"
-            elif isinstance(element, ListItem):
-                element_type = "list_item"
-            elif isinstance(element, Table):
-                element_type = "table"
-            
-            structured_data.append({
-                'type': element_type,
-                'text': text,
-                'metadata': element_dict.get('metadata', {}),
-                'coordinates': element_dict.get('coordinates', None)
-            })
+                processed_count += 1
+                
+                # Show progress every 50 elements
+                if (i + 1) % 50 == 0:
+                    await cl.Message(content=f"📝 **Processing elements**: {i + 1}/{len(elements)} completed...").send()
+                    
+            except Exception as element_error:
+                # Log element processing errors but continue
+                skipped_count += 1
+                if skipped_count <= 10:  # Only show first 10 errors to avoid spam
+                    await cl.Message(content=f"⚠️ **Warning**: Skipped element {i+1} due to processing error: {type(element_error).__name__}: {str(element_error)[:100]}...").send()
+                elif skipped_count == 11:
+                    await cl.Message(content="⚠️ **Note**: Additional element processing errors will be logged but not displayed to avoid spam...").send()
+                continue
+        
+        # Show final processing summary
+        summary_msg = f"""📋 **Processing Summary for {os.path.basename(file_path)}**:
+• Total elements found: {len(elements)}
+• Successfully processed: {processed_count}
+• Skipped due to errors: {skipped_count}
+• Words extracted: {word_count:,}
+• File size: {os.path.getsize(file_path):,} bytes"""
+        
+        await cl.Message(content=summary_msg).send()
         
         return {
             'success': True,
@@ -275,179 +220,207 @@ async def process_single_file_from_path(file_path: str) -> Dict[str, Any]:
             'word_count': word_count,
             'elements': structured_data,
             'element_count': len(structured_data),
-            'file_type': Path(file_path).suffix.lower()
+            'file_type': Path(file_path).suffix.lower(),
+            'total_elements_found': len(elements),
+            'processed_count': processed_count,
+            'skipped_count': skipped_count
         }
         
     except Exception as e:
+        # More detailed error information
+        error_details = f"❌ **Processing Error** for {os.path.basename(file_path)}:\n\n"
+        error_details += f"**Error Type**: {type(e).__name__}\n"
+        error_details += f"**Error Message**: {str(e)}\n\n"
+        error_details += "**Troubleshooting Tips**:\n"
+        error_details += "• Check if the file is corrupted or password-protected\n"
+        error_details += "• Ensure the file format is supported\n"
+        error_details += "• Try with a different PDF file\n"
+        error_details += "• Check if the file contains complex layouts or special characters"
+        
+        await cl.Message(content=error_details).send()
         raise e
+
+async def show_processed_content():
+    """Show a preview of the processed content"""
+    
+    global processed_results # Access the global variable
+    
+    if not processed_results:
+        await cl.Message(content="❌ No processed data to show. Please process some files first.").send()
+        return
+    
+    # Show summary of all processed files
+    summary_msg = f"📊 **Processed Files Summary**\n\n"
+    for i, result in enumerate(processed_results):
+        if result.get('success', False):
+            summary_msg += f"**{i+1}. {result['filename']}**\n"
+            summary_msg += f"   • Elements: {result['element_count']:,}\n"
+            summary_msg += f"   • Words: {result['word_count']:,}\n"
+            summary_msg += f"   • Size: {result['file_size']:,} bytes\n"
+            summary_msg += f"   • Type: {result['file_type']}\n\n"
+    
+    await cl.Message(content=summary_msg).send()
+    
+    # Show sample content from each file
+    for i, result in enumerate(processed_results):
+        if result.get('success', False) and result.get('elements'):
+            elements = result['elements']
+            
+            # Show first few elements as preview
+            preview_msg = f"📄 **Preview of {result['filename']}**\n\n"
+            
+            # Show first 5 elements
+            for j, element in enumerate(elements[:5]):
+                preview_msg += f"**{j+1}. {element['type'].title()}**\n"
+                preview_msg += f"   {element['text'][:200]}{'...' if len(element['text']) > 200 else ''}\n\n"
+            
+            if len(elements) > 5:
+                preview_msg += f"... and {len(elements) - 5} more elements\n\n"
+            
+            await cl.Message(content=preview_msg).send()
 
 async def export_processed_data():
     """Export processed data in various formats"""
     
-    results = cl.get_session().user_session.get("processed_results", [])
-    if not results:
+    global processed_results # Access the global variable
+    
+    if not processed_results:
         await cl.Message(content="❌ No processed data to export. Please process some files first.").send()
         return
     
-    await cl.Message(content="📤 Preparing export...").send()
-    
-    # Create export directory
-    export_dir = Path("exports")
-    export_dir.mkdir(exist_ok=True)
-    
-    # Export as JSON
-    json_path = export_dir / "processed_data.json"
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
-    
-    # Export as CSV (flattened)
-    csv_data = []
-    for result in results:
-        for element in result.get('elements', []):
-            csv_data.append({
-                'filename': result['filename'],
-                'element_type': element['type'],
-                'text': element['text'][:500],  # Truncate long text
-                'word_count': len(element['text'].split()),
-                'file_type': result['file_type']
-            })
-    
-    df = pd.DataFrame(csv_data)
-    csv_path = export_dir / "processed_data.csv"
-    df.to_csv(csv_path, index=False, encoding='utf-8')
-    
-    # Create summary report
-    summary_data = []
-    for result in results:
-        summary_data.append({
-            'filename': result['filename'],
-            'file_type': result['file_type'],
-            'file_size_mb': round(result['file_size'] / (1024*1024), 2),
-            'word_count': result['word_count'],
-            'element_count': result['element_count'],
-            'status': 'Success' if result.get('success') else 'Failed'
-        })
-    
-    summary_df = pd.DataFrame(summary_data)
-    summary_path = export_dir / "processing_summary.csv"
-    summary_df.to_csv(summary_path, index=False, encoding='utf-8')
-    
-    # Send export files
-    files_to_send = [
-        cl.File(name="processed_data.json", path=str(json_path), display="inline"),
-        cl.File(name="processed_data.csv", path=str(csv_path), display="inline"),
-        cl.File(name="processing_summary.csv", path=str(summary_path), display="inline")
-    ]
-    
-    await cl.Message(
-        content="📤 **Export Complete!**\n\nYour processed data has been exported in multiple formats:",
-        elements=files_to_send
-    ).send()
+    try:
+        # Create export directory
+        export_dir = "exports"
+        os.makedirs(export_dir, exist_ok=True)
+        
+        # Export as JSON
+        json_file = os.path.join(export_dir, "processed_data.json")
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(processed_results, f, indent=2, ensure_ascii=False, default=str)
+        
+        # Export as CSV (simplified)
+        csv_file = os.path.join(export_dir, "processed_data.csv")
+        with open(csv_file, 'w', encoding='utf-8') as f:
+            f.write("filename,element_count,word_count,file_size,file_type\n")
+            for result in processed_results:
+                if result.get('success', False):
+                    f.write(f"{result['filename']},{result['element_count']},{result['word_count']},{result['file_size']},{result['file_type']}\n")
+        
+        # Export detailed text content
+        text_file = os.path.join(export_dir, "extracted_text.txt")
+        with open(text_file, 'w', encoding='utf-8') as f:
+            for result in processed_results:
+                if result.get('success', False):
+                    f.write(f"\n{'='*50}\n")
+                    f.write(f"FILE: {result['filename']}\n")
+                    f.write(f"ELEMENTS: {result['element_count']}\n")
+                    f.write(f"WORDS: {result['word_count']}\n")
+                    f.write(f"{'='*50}\n\n")
+                    
+                    for element in result.get('elements', []):
+                        f.write(f"[{element['type'].upper()}]\n")
+                        f.write(f"{element['text']}\n\n")
+        
+        export_msg = f"""📤 **Export Complete!**
+
+**Files created in 'exports' directory:**
+• `processed_data.json` - Complete structured data
+• `processed_data.csv` - Summary statistics
+• `extracted_text.txt` - All extracted text content
+
+**Export location**: `{os.path.abspath(export_dir)}`
+
+You can now download these files from your system."""
+        
+        await cl.Message(content=export_msg).send()
+        
+    except Exception as e:
+        await cl.Message(content=f"❌ **Export Error**: {str(e)}").send()
 
 async def clear_session_data():
     """Clear all processed data from the session"""
     
-    cl.get_session().user_session.clear()
+    global processed_results # Access the global variable
+    processed_results = []
     await cl.Message(content="🗑️ Session data cleared. You can start fresh!").send()
 
 async def show_help_info():
-    """Show detailed help information"""
+    """Show help information"""
     
-    help_msg = """❓ **Help & Usage Guide**
-
-**Getting Started:**
-1. **Upload Files**: Use the file upload button to add documents
-2. **Process Files**: Type 'process' to start extraction
-3. **Export Results**: Type 'export' to download your processed data
-4. **Alternative**: Type 'process <file1> <file2>' to process files from paths
-
-**Supported File Types:**
-• **PDFs**: Full text extraction with layout preservation
-• **Images**: OCR text extraction (requires tesseract)
-• **Office Documents**: DOCX, XLSX, PPTX parsing
-• **Plain Text**: TXT, MD, HTML processing
-
-**Processing Options:**
-• Automatic format detection
-• OCR for image files
-• Structure preservation (titles, lists, tables)
-• Metadata extraction
-
-**Output Formats:**
-• **JSON**: Complete structured data with metadata
-• **CSV**: Flattened data for analysis
-• **Summary**: Processing statistics and file information
+    help_msg = """📚 **Dataset Processor Help**
 
 **Commands:**
-• 'help' - Show this help message
-• 'process' - Process uploaded files
-• 'process <file1> <file2>' - Process files from paths
-• 'export' - Download processed results
-• 'clear' - Clear session data
-• 'demo' - Run a sample processing workflow
+• `help` - Show this help message
+• `process /path/to/file.pdf` - Process a file from path
+• `show` - Preview extracted content
+• `export` - Download results as files
+• `clear` - Clear all processed data
+• `demo` - Run a sample workflow
 
-**Example Usage:**
-```
-# Upload files first, then:
-process
+**Supported File Types:**
+• **Documents**: PDF, DOCX, TXT, RTF
+• **Images**: JPG, PNG, TIFF, BMP (with OCR)
+• **Spreadsheets**: XLSX, CSV
+• **Presentations**: PPTX
+• **And more!**
 
-# Or process specific files:
-process /path/to/document.pdf /path/to/image.jpg
-export
-clear
-```
+**Examples:**
+• `process /Users/username/Documents/resume.pdf`
+• `process /path/to/image.jpg`
+• `process /path/to/document.docx`
 
 **Tips:**
+• Use absolute paths for best results
 • Large files may take longer to process
-• Image quality affects OCR accuracy
-• Complex layouts are preserved when possible
-• All processing happens locally for privacy
+• OCR processing is automatic for images
+• Results are stored in memory until exported
 
-**Need More Help?**
-Check the unstructured documentation for advanced features and configuration options."""
+**Need help?** Type `help` anytime!"""
     
     await cl.Message(content=help_msg).send()
 
 async def run_demo():
-    """Run a demo processing workflow"""
+    """Run a demo workflow"""
     
-    await cl.Message(content="🎬 **Demo Mode - Sample Processing Workflow**").send()
+    demo_msg = """🎯 **Demo Workflow**
+
+This is a demonstration of the Dataset Processor capabilities.
+
+**To get started:**
+1. **Process a file**: Type `process /path/to/your/file.pdf`
+2. **View results**: Type `show` to see what was extracted
+3. **Export data**: Type `export` to download the results
+
+**Sample file paths you can try:**
+• Any PDF document on your system
+• Text files (.txt)
+• Word documents (.docx)
+• Images (.jpg, .png)
+
+**Example command:**
+`process /Users/username/Desktop/sample.pdf`
+
+Try processing a file and see the magic happen! 🚀"""
     
-    # Check if we have example docs in the unstructured repo
-    example_docs_path = Path("../unstructured/example-docs")
-    if example_docs_path.exists():
-        # Find some example files
-        example_files = []
-        for ext in ['.txt', '.pdf', '.docx']:
-            files = list(example_docs_path.rglob(f"*{ext}"))
-            if files:
-                example_files.extend(files[:2])  # Take first 2 of each type
-        
-        if example_files:
-            await cl.Message(content=f"📁 Found {len(example_files)} example files. Processing them...").send()
-            await process_files_from_paths([str(f) for f in example_files])
-        else:
-            await cl.Message(content="❌ No example files found in the unstructured repository.").send()
-    else:
-        await cl.Message(content="❌ Example docs directory not found. Please ensure you're running from the correct location.").send()
+    await cl.Message(content=demo_msg).send()
 
 @cl.on_message
 async def handle_message(message: cl.Message):
     """Handle user messages"""
-    
+
     content = message.content.lower().strip()
-    
+
     if content in ['help', '?', 'info']:
         await show_help_info()
     elif content.startswith('process'):
-        # Extract file paths from the message
         parts = message.content.split()
         if len(parts) > 1:
             file_paths = parts[1:]
             await process_files_from_paths(file_paths)
         else:
-            # Process uploaded files
-            await process_uploaded_files()
+            await cl.Message(content="❌ Please provide file paths. Example: 'process /path/to/your/file.pdf'").send()
+    elif content in ['show', 'preview', 'view']:
+        await show_processed_content() # New command
     elif content in ['export', 'download', 'save']:
         await export_processed_data()
     elif content in ['clear', 'reset', 'new']:
@@ -455,8 +428,7 @@ async def handle_message(message: cl.Message):
     elif content in ['demo', 'example', 'sample']:
         await run_demo()
     else:
-        # Default response
-        await cl.Message(content="💡 **Tip**: Type 'help' for instructions, 'process' to start processing uploaded files, 'export' to download results, or 'demo' to see a sample workflow!").send()
+        await cl.Message(content="💡 **Tip**: Type 'help' for instructions, 'process /path/to/file.pdf' to start processing, 'show' to preview content, 'export' to download results, or 'demo' to see a sample workflow!").send()
 
 if __name__ == "__main__":
     # This will be used when running the app
