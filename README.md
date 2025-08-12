@@ -7,10 +7,11 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 - **📁 Multi-format Support**: PDF, DOCX, TXT, MD, HTML, Images (with OCR), CSV, XLSX, PPTX
 - **🔄 Real-time Processing**: Live progress updates and status tracking
 - **📊 Structured Output**: Preserves document structure (titles, lists, tables, etc.)
-- **📤 Multiple Export Formats**: JSON, CSV, and summary reports
-- **🎨 Beautiful UI**: Modern, responsive interface with action buttons
+- **📤 Multiple Export Formats**: JSON, CSV, and text exports
+- **🎨 Beautiful UI**: Modern, responsive chat interface
 - **🔒 Local Processing**: All processing happens locally for privacy
 - **📱 Mobile Friendly**: Works on desktop and mobile devices
+- **🛡️ Robust Processing**: Handles processing errors gracefully without crashing
 
 ## 🛠️ Installation
 
@@ -35,7 +36,6 @@ A powerful, user-friendly tool for processing and extracting structured data fro
    ```bash
    # Core unstructured library (already installed)
    # Chainlit (already installed)
-   pip install pandas
    ```
 
 4. **Verify Installation**
@@ -49,7 +49,7 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 
 1. **Run the Application**
    ```bash
-   chainlit run dataset_processor.py
+   python -m chainlit run dataset_processor.py
    ```
 
 2. **Open in Browser**
@@ -58,24 +58,28 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 
 ### Using the App
 
-1. **Upload Files**
-   - Click the file upload button or drag & drop files
-   - Supported formats are automatically detected
+1. **Process Documents by Path**
+   - Type `process /path/to/your/file.pdf` to start extraction
+   - Use absolute paths for best results
+   - Example: `process /Users/username/Documents/resume.pdf`
 
-2. **Process Documents**
-   - Click "🔄 Process Files" to start extraction
-   - Watch real-time progress updates
-   - View processing statistics
+2. **View Results**
+   - Type `show` to preview extracted content
+   - See real-time processing progress
+   - View processing statistics and summaries
 
 3. **Export Results**
-   - Click "📤 Export Results" to download data
-   - Choose from JSON, CSV, or summary formats
+   - Type `export` to download data to local files
+   - Files are saved in the `exports/` directory
+   - Available formats: JSON, CSV, and text
 
 4. **Interactive Commands**
-   - Type `help` for instructions
-   - Type `process` to start processing
+   - Type `help` for detailed instructions
+   - Type `process /path/to/file` to start processing
+   - Type `show` to preview content
    - Type `export` to download results
    - Type `clear` to reset session
+   - Type `demo` to see sample workflow
 
 ## 📁 Supported File Types
 
@@ -88,15 +92,16 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 
 ## 🔧 Configuration
 
-### File Upload Limits
-- **Max File Size**: 100 MB
-- **Max Files**: 10 per session
-- **Accepted Types**: All supported formats
-
 ### Processing Options
 - **OCR**: Automatically enabled for images
 - **Structure Detection**: Automatic title, list, and table recognition
 - **Metadata Extraction**: File properties and processing information
+- **Error Handling**: Robust processing that continues despite individual element failures
+
+### File Processing
+- **Path-based**: Provide full file paths to process documents
+- **Multiple files**: Process several files at once
+- **Local files only**: All files must be accessible from your system
 
 ## 📊 Output Formats
 
@@ -110,25 +115,34 @@ Complete structured data with metadata:
     {
       "type": "title",
       "text": "Document Title",
-      "metadata": {...}
+      "metadata": {...},
+      "coordinates": {...}
     }
   ]
 }
 ```
 
 ### 2. CSV Export
-Flattened data for analysis:
+Summary statistics for each file:
 ```csv
-filename,element_type,text,word_count,file_type
-document.pdf,title,Document Title,2,.pdf
-document.pdf,narrative,Main content...,45,.pdf
+filename,element_count,word_count,file_size,file_type
+document.pdf,15,1250,2560000,.pdf
 ```
 
-### 3. Summary Report
-Processing statistics and file information:
-```csv
-filename,file_type,file_size_mb,word_count,element_count,status
-document.pdf,.pdf,2.5,1250,15,Success
+### 3. Text Export
+All extracted text content organized by file:
+```text
+==================================================
+FILE: document.pdf
+ELEMENTS: 15
+WORDS: 1250
+==================================================
+
+[TITLE]
+Document Title
+
+[NARRATIVE]
+Main content text...
 ```
 
 ## 🎯 Use Cases
@@ -143,28 +157,34 @@ document.pdf,.pdf,2.5,1250,15,Success
 ## 🚀 Advanced Features
 
 ### Batch Processing
-- Upload multiple files at once
-- Process all files in sequence
+- Process multiple files at once
+- Example: `process /path/to/file1.pdf /path/to/file2.docx /path/to/image.jpg`
 - Consolidated results and statistics
 
 ### Structure Preservation
 - Maintains document hierarchy
 - Identifies titles, subtitles, and sections
 - Preserves list formatting and table structure
+- Handles complex layouts gracefully
 
 ### OCR Capabilities
 - Automatic text extraction from images
 - Support for multiple image formats
 - Quality-based processing
 
+### Robust Error Handling
+- Individual element processing failures don't stop the entire process
+- Detailed error reporting and progress tracking
+- Continues processing despite problematic elements
+
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **File Upload Fails**
-   - Check file size (max 100 MB)
-   - Verify file format is supported
-   - Ensure sufficient disk space
+1. **File Not Found**
+   - Use absolute paths for best results
+   - Check file permissions and accessibility
+   - Verify file exists at the specified path
 
 2. **Processing Errors**
    - Check file integrity
@@ -195,10 +215,10 @@ DatasetBuilder/
 ```
 
 ### Customization
-- Modify `SUPPORTED_FORMATS` for different file types
-- Adjust processing logic in `process_single_file()`
+- Modify element processing logic in `process_single_file_from_path()`
 - Customize export formats in `export_processed_data()`
 - Update UI styling in `.chainlit/config.toml`
+- Adjust progress tracking frequency
 
 ## 📚 Resources
 
