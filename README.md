@@ -12,8 +12,58 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 - **🔒 Local Processing**: All processing happens locally for privacy
 - **📱 Mobile Friendly**: Works on desktop and mobile devices
 - **🛡️ Robust Processing**: Handles processing errors gracefully without crashing
+- **🐳 Docker Ready**: Easy setup with Docker and Docker Compose
 
-## 🛠️ Installation
+## 🚀 Quick Start (Docker - Recommended)
+
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) installed
+- [Docker Compose](https://docs.docker.com/compose/install/) installed
+
+### One-Command Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/fa1ak/Dataset_Builder.git
+   cd Dataset_Builder
+   ```
+
+2. **Run the setup script**
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
+3. **Start the application**
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Access the tool**
+   - Open your browser and go to: `http://localhost:8000`
+   - The tool is ready to use!
+
+### Manual Docker Setup
+
+If you prefer to set up manually:
+
+1. **Clone and navigate**
+   ```bash
+   git clone https://github.com/fa1ak/Dataset_Builder.git
+   cd Dataset_Builder
+   ```
+
+2. **Create directories**
+   ```bash
+   mkdir -p data exports
+   ```
+
+3. **Build and run**
+   ```bash
+   docker-compose up --build
+   ```
+
+## 🛠️ Local Installation (Alternative)
 
 ### Prerequisites
 
@@ -22,39 +72,41 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 
 ### Setup Steps
 
-1. **Clone and Navigate**
+1. **Clone the repository**
    ```bash
-   cd ~/Desktop/Projects/DatasetBuilder
+   git clone https://github.com/fa1ak/Dataset_Builder.git
+   cd Dataset_Builder
    ```
 
-2. **Activate Virtual Environment**
+2. **Create and activate virtual environment**
    ```bash
-   pyenv activate unstructured
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install Dependencies**
+3. **Install dependencies**
    ```bash
-   # Core unstructured library (already installed)
-   # Chainlit (already installed)
+   pip install -r requirements.txt
    ```
 
-4. **Verify Installation**
+4. **Verify installation**
    ```bash
    python -c "import chainlit, unstructured; print('✅ All dependencies installed!')"
    ```
 
-## 🚀 Usage
+## 🎯 Usage
 
 ### Starting the App
 
-1. **Run the Application**
-   ```bash
-   python -m chainlit run dataset_processor.py
-   ```
+#### With Docker (Recommended)
+```bash
+docker-compose up --build
+```
 
-2. **Open in Browser**
-   - The app will automatically open at `http://localhost:8000`
-   - Or manually navigate to the URL shown in the terminal
+#### With Local Python
+```bash
+python -m chainlit run dataset_processor.py
+```
 
 ### Using the App
 
@@ -62,6 +114,7 @@ A powerful, user-friendly tool for processing and extracting structured data fro
    - Type `process /path/to/your/file.pdf` to start extraction
    - Use absolute paths for best results
    - Example: `process /Users/username/Documents/resume.pdf`
+   - **With Docker**: Place files in the `data` folder and use `process /app/data/yourfile.pdf`
 
 2. **View Results**
    - Type `show` to preview extracted content
@@ -102,6 +155,11 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 - **Path-based**: Provide full file paths to process documents
 - **Multiple files**: Process several files at once
 - **Local files only**: All files must be accessible from your system
+
+### Docker Volumes
+- **Data directory**: Mount your documents in the `data` folder
+- **Exports directory**: Results are automatically saved to the `exports` folder
+- **Port mapping**: Access the tool at `http://localhost:8000`
 
 ## 📊 Output Formats
 
@@ -185,22 +243,49 @@ Main content text...
    - Use absolute paths for best results
    - Check file permissions and accessibility
    - Verify file exists at the specified path
+   - **With Docker**: Place files in the `data` folder and use `/app/data/filename.pdf`
 
 2. **Processing Errors**
    - Check file integrity
-   - Verify unstructured library installation
-   - Check system dependencies (tesseract, poppler)
+   - Verify Docker container is running properly
+   - Check system dependencies (tesseract, poppler) are installed in container
 
 3. **Performance Issues**
    - Large files may take longer
    - Complex layouts require more processing time
    - Consider breaking large documents into smaller parts
 
+### Docker Issues
+
+1. **Container won't start**
+   ```bash
+   # Check logs
+   docker-compose logs
+   
+   # Rebuild container
+   docker-compose down
+   docker-compose up --build
+   ```
+
+2. **Port already in use**
+   ```bash
+   # Change port in docker-compose.yml
+   ports:
+     - "8001:8000"  # Use port 8001 instead
+   ```
+
+3. **Permission issues**
+   ```bash
+   # Ensure directories exist and have proper permissions
+   mkdir -p data exports
+   chmod 755 data exports
+   ```
+
 ### System Requirements
 
 - **Memory**: 4GB+ RAM recommended
 - **Storage**: Sufficient space for temporary files
-- **Dependencies**: tesseract, poppler (for PDF/image processing)
+- **Dependencies**: All included in Docker container
 
 ## 🛠️ Development
 
@@ -208,9 +293,14 @@ Main content text...
 ```
 DatasetBuilder/
 ├── dataset_processor.py    # Main application
+├── Dockerfile             # Docker configuration
+├── docker-compose.yml     # Docker Compose setup
+├── requirements.txt       # Python dependencies
+├── setup.sh              # Setup script
 ├── .chainlit/
-│   └── config.toml        # Chainlit configuration
-├── exports/               # Generated export files
+│   └── config.toml       # Chainlit configuration
+├── data/                 # User documents (mounted volume)
+├── exports/              # Generated export files (mounted volume)
 └── README.md             # This file
 ```
 
@@ -219,11 +309,22 @@ DatasetBuilder/
 - Customize export formats in `export_processed_data()`
 - Update UI styling in `.chainlit/config.toml`
 - Adjust progress tracking frequency
+- Modify Docker configuration in `Dockerfile` and `docker-compose.yml`
+
+### Building Custom Docker Image
+```bash
+# Build custom image
+docker build -t my-dataset-processor .
+
+# Run custom image
+docker run -p 8000:8000 -v $(pwd)/data:/app/data -v $(pwd)/exports:/app/exports my-dataset-processor
+```
 
 ## 📚 Resources
 
 - **Unstructured Documentation**: [https://unstructured.io/](https://unstructured.io/)
 - **Chainlit Documentation**: [https://docs.chainlit.io/](https://docs.chainlit.io/)
+- **Docker Documentation**: [https://docs.docker.com/](https://docs.docker.com/)
 - **Python Documentation**: [https://docs.python.org/](https://docs.python.org/)
 
 ## 🤝 Contributing
@@ -231,7 +332,7 @@ DatasetBuilder/
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test thoroughly (including Docker build)
 5. Submit a pull request
 
 ## 📄 License
@@ -242,6 +343,7 @@ This project is open source and available under the MIT License.
 
 For issues and questions:
 - Check the troubleshooting section above
+- Review the Docker logs: `docker-compose logs`
 - Review the unstructured and Chainlit documentation
 - Open an issue in the repository
 

@@ -1,0 +1,19 @@
+# Core dependencies
+chainlit==2.6.8
+unstructured[all-docs]==0.12.4
+
+# Document processing dependencies
+python-magic
+pypdf
+python-docx
+openpyxl
+pandas
+pillow
+
+# OCR and image processing
+pytesseract
+pdf2image
+
+# Additional utilities
+pathlib2
+typing-extensions
