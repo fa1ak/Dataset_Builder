@@ -1,20 +1,20 @@
-# 🚀 Dataset Processing Tool with Chainlit & Unstructured
+# Dataset Processing Tool with Chainlit & Unstructured
 
 A powerful, user-friendly tool for processing and extracting structured data from various document types using the **unstructured** library with a beautiful **Chainlit** interface.
 
-## ✨ Features
+## Features
 
-- **📁 Multi-format Support**: PDF, DOCX, TXT, MD, HTML, Images (with OCR), CSV, XLSX, PPTX
-- **🔄 Real-time Processing**: Live progress updates and status tracking
-- **📊 Structured Output**: Preserves document structure (titles, lists, tables, etc.)
-- **📤 Multiple Export Formats**: JSON, CSV, and text exports
-- **🎨 Beautiful UI**: Modern, responsive chat interface
-- **🔒 Local Processing**: All processing happens locally for privacy
-- **📱 Mobile Friendly**: Works on desktop and mobile devices
-- **🛡️ Robust Processing**: Handles processing errors gracefully without crashing
-- **🐳 Docker Ready**: Easy setup with Docker and Docker Compose
+- **Multi-format Support**: PDF, DOCX, TXT, MD, HTML, Images (with OCR), CSV, XLSX, PPTX
+- **Real-time Processing**: Live progress updates and status tracking
+- **Structured Output**: Preserves document structure (titles, lists, tables, etc.)
+- **Multiple Export Formats**: JSON, CSV, and text exports
+- **Beautiful UI**: Modern, responsive chat interface
+- **Local Processing**: All processing happens locally for privacy
+- **Mobile Friendly**: Works on desktop and mobile devices
+- **Robust Processing**: Handles processing errors gracefully without crashing
+- **Docker Ready**: Easy setup with Docker and Docker Compose
 
-## 🚀 Quick Start (Docker - Recommended)
+## Quick Start (Docker - Recommended)
 
 ### Prerequisites
 - [Docker](https://docs.docker.com/get-docker/) installed
@@ -63,7 +63,7 @@ If you prefer to set up manually:
    docker-compose up --build
    ```
 
-## 🛠️ Local Installation (Alternative)
+## Local Installation (Alternative)
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ If you prefer to set up manually:
    python -c "import chainlit, unstructured; print('✅ All dependencies installed!')"
    ```
 
-## 🎯 Usage
+## Usage
 
 ### Starting the App
 
@@ -134,7 +134,7 @@ python -m chainlit run dataset_processor.py
    - Type `clear` to reset session
    - Type `demo` to see sample workflow
 
-## 📁 Supported File Types
+## Supported File Types
 
 | Category | Formats | Features |
 |----------|---------|----------|
@@ -143,7 +143,7 @@ python -m chainlit run dataset_processor.py
 | **Spreadsheets** | CSV, XLSX | Tabular data extraction |
 | **Presentations** | PPTX | Slide content extraction |
 
-## 🔧 Configuration
+## Configuration
 
 ### Processing Options
 - **OCR**: Automatically enabled for images
@@ -161,7 +161,7 @@ python -m chainlit run dataset_processor.py
 - **Exports directory**: Results are automatically saved to the `exports` folder
 - **Port mapping**: Access the tool at `http://localhost:8000`
 
-## 📊 Output Formats
+## Output Formats
 
 ### 1. JSON Export
 Complete structured data with metadata:
@@ -203,16 +203,16 @@ Document Title
 Main content text...
 ```
 
-## 🎯 Use Cases
+## Use Cases
 
-- **📚 Research**: Extract text from academic papers and reports
-- **📊 Data Analysis**: Process spreadsheets and structured documents
-- **📝 Content Creation**: Extract content from various sources
-- **🔍 Information Retrieval**: Search through document collections
-- **📋 Compliance**: Process legal and regulatory documents
-- **🎨 Creative Projects**: Extract text from images and designs
+- **Research**: Extract text from academic papers and reports
+- **Data Analysis**: Process spreadsheets and structured documents
+- **Content Creation**: Extract content from various sources
+- **Information Retrieval**: Search through document collections
+- **Compliance**: Process legal and regulatory documents
+- **Creative Projects**: Extract text from images and designs
 
-## 🚀 Advanced Features
+## Advanced Features
 
 ### Batch Processing
 - Process multiple files at once
@@ -235,7 +235,7 @@ Main content text...
 - Detailed error reporting and progress tracking
 - Continues processing despite problematic elements
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -320,14 +320,14 @@ docker build -t my-dataset-processor .
 docker run -p 8000:8000 -v $(pwd)/data:/app/data -v $(pwd)/exports:/app/exports my-dataset-processor
 ```
 
-## 📚 Resources
+## Resources
 
 - **Unstructured Documentation**: [https://unstructured.io/](https://unstructured.io/)
 - **Chainlit Documentation**: [https://docs.chainlit.io/](https://docs.chainlit.io/)
 - **Docker Documentation**: [https://docs.docker.com/](https://docs.docker.com/)
 - **Python Documentation**: [https://docs.python.org/](https://docs.python.org/)
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -335,18 +335,10 @@ docker run -p 8000:8000 -v $(pwd)/data:/app/data -v $(pwd)/exports:/app/exports 
 4. Test thoroughly (including Docker build)
 5. Submit a pull request
 
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 🆘 Support
+## Support
 
 For issues and questions:
 - Check the troubleshooting section above
 - Review the Docker logs: `docker-compose logs`
 - Review the unstructured and Chainlit documentation
 - Open an issue in the repository
-
----
-
-**Happy Document Processing! 🎉**
