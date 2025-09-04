@@ -43,6 +43,23 @@ A powerful, user-friendly tool for processing and extracting structured data fro
    - Open your browser and go to: `http://localhost:8000`
    - The tool is ready to use!
 
+## 🌐 Production Deployment
+
+For production deployment with a domain, database, and proper infrastructure, see our comprehensive [Production Deployment Guide](README.PRODUCTION.md).
+
+### Quick Production Setup
+```bash
+# 1. Configure environment
+cp env.prod.example .env
+# Edit .env with your configuration
+
+# 2. Deploy to production
+./deploy.sh
+
+# 3. Setup SSL certificate
+sudo certbot --nginx -d your-domain.com
+```
+
 ### Manual Docker Setup
 
 If you prefer to set up manually:
