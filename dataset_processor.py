@@ -7,6 +7,15 @@ from typing import List, Dict, Any
 from unstructured.partition.auto import partition
 from unstructured.documents.elements import Title, NarrativeText, ListItem, Table, Header, Footer, Text
 
+# Import OpenAI client
+try:
+    from openai_client import openai_client
+    OPENAI_AVAILABLE = openai_client is not None and openai_client.is_available()
+except Exception as e:
+    print(f"OpenAI integration not available: {e}")
+    openai_client = None
+    OPENAI_AVAILABLE = False
+
 # Global variable to store results (since cl.get_session() doesn't exist in this version)
 processed_results = []
 
@@ -15,15 +24,20 @@ async def start():
     """Initialize the chat session"""
     
     # Welcome message with instructions
-    welcome_msg = """🚀 **Welcome to Dataset Processor!**
+    ai_status = "🤖 **AI Features Available**" if OPENAI_AVAILABLE else "⚠️ **AI Features Disabled** (OpenAI API key not configured)"
+    
+    welcome_msg = f"""🚀 **Welcome to Dataset Processor!**
 
 **How to use:**
 1. **Process files**: Type `process /path/to/your/file.pdf` (or any supported format)
 2. **View results**: Type `show` to see extracted content
 3. **Export data**: Type `export` to download results
-4. **Get help**: Type `help` for more options
+4. **AI Features**: Type `ai help` for AI-powered analysis options
+5. **Get help**: Type `help` for more options
 
 **Supported formats**: PDF, DOCX, TXT, JPG, PNG, and more!
+
+{ai_status}
 
 **Example**: `process /Users/username/Documents/resume.pdf`
 
@@ -390,6 +404,7 @@ This is a demonstration of the Dataset Processor capabilities.
 1. **Process a file**: Type `process /path/to/your/file.pdf`
 2. **View results**: Type `show` to see what was extracted
 3. **Export data**: Type `export` to download the results
+4. **AI Analysis**: Type `ai summarize` or `ai analyze` for AI insights
 
 **Sample file paths you can try:**
 • Any PDF document on your system
@@ -403,6 +418,293 @@ This is a demonstration of the Dataset Processor capabilities.
 Try processing a file and see the magic happen! 🚀"""
     
     await cl.Message(content=demo_msg).send()
+
+# AI-Powered Functions
+async def ai_summarize_document():
+    """Generate AI summary of processed documents"""
+    global processed_results
+    
+    if not OPENAI_AVAILABLE:
+        await cl.Message(content="❌ **AI Features Not Available**: OpenAI API key not configured. Please set up your API key in the .env file.").send()
+        return
+    
+    if not processed_results:
+        await cl.Message(content="❌ No processed data to summarize. Please process some files first.").send()
+        return
+    
+    try:
+        await cl.Message(content="🤖 **Generating AI Summary**... This may take a moment.").send()
+        
+        # Combine all text content from processed results
+        all_text = ""
+        for result in processed_results:
+            if result.get('success', False) and result.get('elements'):
+                for element in result['elements']:
+                    all_text += element['text'] + "\n"
+        
+        if not all_text.strip():
+            await cl.Message(content="❌ No text content found to summarize.").send()
+            return
+        
+        # Generate summary
+        summary_result = openai_client.summarize_document(all_text)
+        
+        if summary_result.get('success'):
+            summary_msg = f"""📝 **AI Document Summary**
+
+**Summary:**
+{summary_result['summary']}
+
+**Statistics:**
+• Original words: {summary_result['original_word_count']:,}
+• Summary words: {summary_result['word_count']:,}
+• Compression ratio: {summary_result['word_count']/summary_result['original_word_count']*100:.1f}%
+
+**Files analyzed:** {len(processed_results)} files"""
+            
+            await cl.Message(content=summary_msg).send()
+        else:
+            await cl.Message(content=f"❌ **Summary Error**: {summary_result.get('error', 'Unknown error')}").send()
+            
+    except Exception as e:
+        await cl.Message(content=f"❌ **Error**: {str(e)}").send()
+
+async def ai_analyze_document(analysis_type: str = "general"):
+    """Generate AI analysis of processed documents"""
+    global processed_results
+    
+    if not OPENAI_AVAILABLE:
+        await cl.Message(content="❌ **AI Features Not Available**: OpenAI API key not configured. Please set up your API key in the .env file.").send()
+        return
+    
+    if not processed_results:
+        await cl.Message(content="❌ No processed data to analyze. Please process some files first.").send()
+        return
+    
+    try:
+        await cl.Message(content=f"🔍 **Generating AI Analysis** ({analysis_type})... This may take a moment.").send()
+        
+        # Combine all text content from processed results
+        all_text = ""
+        for result in processed_results:
+            if result.get('success', False) and result.get('elements'):
+                for element in result['elements']:
+                    all_text += element['text'] + "\n"
+        
+        if not all_text.strip():
+            await cl.Message(content="❌ No text content found to analyze.").send()
+            return
+        
+        # Generate analysis
+        analysis_result = openai_client.analyze_document(all_text, analysis_type)
+        
+        if analysis_result.get('success'):
+            analysis_msg = f"""📊 **AI Document Analysis** ({analysis_type.title()})
+
+**Analysis:**
+{analysis_result['analysis']}
+
+**Statistics:**
+• Analysis type: {analysis_result['analysis_type']}
+• Analysis words: {analysis_result['word_count']:,}
+• Files analyzed: {len(processed_results)} files"""
+            
+            await cl.Message(content=analysis_msg).send()
+        else:
+            await cl.Message(content=f"❌ **Analysis Error**: {analysis_result.get('error', 'Unknown error')}").send()
+            
+    except Exception as e:
+        await cl.Message(content=f"❌ **Error**: {str(e)}").send()
+
+async def ai_extract_key_info():
+    """Extract key information using AI"""
+    global processed_results
+    
+    if not OPENAI_AVAILABLE:
+        await cl.Message(content="❌ **AI Features Not Available**: OpenAI API key not configured. Please set up your API key in the .env file.").send()
+        return
+    
+    if not processed_results:
+        await cl.Message(content="❌ No processed data to analyze. Please process some files first.").send()
+        return
+    
+    try:
+        await cl.Message(content="🔍 **Extracting Key Information**... This may take a moment.").send()
+        
+        # Combine all text content from processed results
+        all_text = ""
+        for result in processed_results:
+            if result.get('success', False) and result.get('elements'):
+                for element in result['elements']:
+                    all_text += element['text'] + "\n"
+        
+        if not all_text.strip():
+            await cl.Message(content="❌ No text content found to analyze.").send()
+            return
+        
+        # Extract key information
+        extraction_result = openai_client.extract_key_information(all_text)
+        
+        if extraction_result.get('success'):
+            extracted_info = extraction_result['extracted_info']
+            
+            info_msg = "🔑 **Key Information Extracted**\n\n"
+            
+            for category, items in extracted_info.items():
+                if items and len(items) > 0:
+                    info_msg += f"**{category.replace('_', ' ').title()}:**\n"
+                    for item in items[:5]:  # Show first 5 items
+                        info_msg += f"• {item}\n"
+                    if len(items) > 5:
+                        info_msg += f"• ... and {len(items) - 5} more\n"
+                    info_msg += "\n"
+            
+            await cl.Message(content=info_msg).send()
+        else:
+            await cl.Message(content=f"❌ **Extraction Error**: {extraction_result.get('error', 'Unknown error')}").send()
+            
+    except Exception as e:
+        await cl.Message(content=f"❌ **Error**: {str(e)}").send()
+
+async def ai_answer_questions(questions: List[str]):
+    """Answer questions about the processed documents"""
+    global processed_results
+    
+    if not OPENAI_AVAILABLE:
+        await cl.Message(content="❌ **AI Features Not Available**: OpenAI API key not configured. Please set up your API key in the .env file.").send()
+        return
+    
+    if not processed_results:
+        await cl.Message(content="❌ No processed data to answer questions about. Please process some files first.").send()
+        return
+    
+    try:
+        await cl.Message(content=f"❓ **Answering {len(questions)} questions**... This may take a moment.").send()
+        
+        # Combine all text content from processed results
+        all_text = ""
+        for result in processed_results:
+            if result.get('success', False) and result.get('elements'):
+                for element in result['elements']:
+                    all_text += element['text'] + "\n"
+        
+        if not all_text.strip():
+            await cl.Message(content="❌ No text content found to answer questions about.").send()
+            return
+        
+        # Answer questions
+        answers_result = openai_client.answer_questions(all_text, questions)
+        
+        if answers_result.get('success'):
+            answers_msg = f"""❓ **AI Answers**
+
+**Questions Asked:**
+{chr(10).join([f"{i+1}. {q}" for i, q in enumerate(questions)])}
+
+**Answers:**
+{answers_result['answers']}
+
+**Statistics:**
+• Questions answered: {len(questions)}
+• Answer words: {answers_result['word_count']:,}
+• Files analyzed: {len(processed_results)} files"""
+            
+            await cl.Message(content=answers_msg).send()
+        else:
+            await cl.Message(content=f"❌ **Answer Error**: {answers_result.get('error', 'Unknown error')}").send()
+            
+    except Exception as e:
+        await cl.Message(content=f"❌ **Error**: {str(e)}").send()
+
+async def ai_generate_content(content_type: str = "report"):
+    """Generate new content based on processed documents"""
+    global processed_results
+    
+    if not OPENAI_AVAILABLE:
+        await cl.Message(content="❌ **AI Features Not Available**: OpenAI API key not configured. Please set up your API key in the .env file.").send()
+        return
+    
+    if not processed_results:
+        await cl.Message(content="❌ No processed data to generate content from. Please process some files first.").send()
+        return
+    
+    try:
+        await cl.Message(content=f"✨ **Generating {content_type}**... This may take a moment.").send()
+        
+        # Combine all text content from processed results
+        all_text = ""
+        for result in processed_results:
+            if result.get('success', False) and result.get('elements'):
+                for element in result['elements']:
+                    all_text += element['text'] + "\n"
+        
+        if not all_text.strip():
+            await cl.Message(content="❌ No text content found to generate content from.").send()
+            return
+        
+        # Generate content
+        content_result = openai_client.generate_content(all_text, content_type)
+        
+        if content_result.get('success'):
+            content_msg = f"""✨ **Generated {content_type.title()}**
+
+**Content:**
+{content_result['content']}
+
+**Statistics:**
+• Content type: {content_result['content_type']}
+• Generated words: {content_result['word_count']:,}
+• Source files: {len(processed_results)} files"""
+            
+            await cl.Message(content=content_msg).send()
+        else:
+            await cl.Message(content=f"❌ **Generation Error**: {content_result.get('error', 'Unknown error')}").send()
+            
+    except Exception as e:
+        await cl.Message(content=f"❌ **Error**: {str(e)}").send()
+
+async def show_ai_help():
+    """Show AI features help"""
+    if not OPENAI_AVAILABLE:
+        help_msg = """🤖 **AI Features Help**
+
+**AI Features are currently disabled.**
+
+To enable AI features:
+1. Get an OpenAI API key from https://platform.openai.com/api-keys
+2. Copy `env.example` to `.env`
+3. Add your API key to the `.env` file
+4. Restart the application
+
+**Available AI Features:**
+• Document summarization
+• Content analysis
+• Key information extraction
+• Question answering
+• Content generation"""
+    else:
+        help_msg = """🤖 **AI Features Help**
+
+**Available AI Commands:**
+• `ai summarize` - Generate a summary of processed documents
+• `ai analyze` - Analyze document content (general, technical, business, academic)
+• `ai extract` - Extract key information (dates, names, numbers, etc.)
+• `ai questions "question1" "question2"` - Answer specific questions
+• `ai generate report` - Generate a report from the documents
+• `ai generate summary` - Generate a detailed summary
+• `ai generate outline` - Create a structured outline
+• `ai generate key_points` - Extract key points
+• `ai generate recommendations` - Provide recommendations
+
+**Examples:**
+• `ai summarize`
+• `ai analyze technical`
+• `ai questions "What is the main topic?" "Who are the key people?"`
+• `ai generate report`
+
+**Note:** AI features require processed documents. Use `process` command first."""
+    
+    await cl.Message(content=help_msg).send()
 
 @cl.on_message
 async def handle_message(message: cl.Message):
@@ -420,15 +722,38 @@ async def handle_message(message: cl.Message):
         else:
             await cl.Message(content="❌ Please provide file paths. Example: 'process /path/to/your/file.pdf'").send()
     elif content in ['show', 'preview', 'view']:
-        await show_processed_content() # New command
+        await show_processed_content()
     elif content in ['export', 'download', 'save']:
         await export_processed_data()
     elif content in ['clear', 'reset', 'new']:
         await clear_session_data()
     elif content in ['demo', 'example', 'sample']:
         await run_demo()
+    # AI Commands
+    elif content == 'ai help':
+        await show_ai_help()
+    elif content == 'ai summarize':
+        await ai_summarize_document()
+    elif content == 'ai extract':
+        await ai_extract_key_info()
+    elif content.startswith('ai analyze'):
+        parts = message.content.split()
+        analysis_type = parts[2] if len(parts) > 2 else "general"
+        await ai_analyze_document(analysis_type)
+    elif content.startswith('ai questions'):
+        # Extract questions from quotes
+        import re
+        questions = re.findall(r'"([^"]*)"', message.content)
+        if questions:
+            await ai_answer_questions(questions)
+        else:
+            await cl.Message(content="❌ Please provide questions in quotes. Example: 'ai questions \"What is the main topic?\" \"Who are the key people?\"'").send()
+    elif content.startswith('ai generate'):
+        parts = message.content.split()
+        content_type = parts[2] if len(parts) > 2 else "report"
+        await ai_generate_content(content_type)
     else:
-        await cl.Message(content="💡 **Tip**: Type 'help' for instructions, 'process /path/to/file.pdf' to start processing, 'show' to preview content, 'export' to download results, or 'demo' to see a sample workflow!").send()
+        await cl.Message(content="💡 **Tip**: Type 'help' for basic instructions, 'ai help' for AI features, 'process /path/to/file.pdf' to start processing, 'show' to preview content, 'export' to download results, or 'demo' to see a sample workflow!").send()
 
 if __name__ == "__main__":
     # This will be used when running the app

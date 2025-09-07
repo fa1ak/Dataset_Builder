@@ -1,3 +1,8 @@
+# Environment variables (contains sensitive information)
+.env
+.env.local
+.env.production
+
 # Python
 __pycache__/
 *.py[cod]
@@ -22,13 +27,12 @@ wheels/
 MANIFEST
 
 # Virtual environments
-.env
-.venv
-env/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
 # IDE
 .vscode/
@@ -46,25 +50,18 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Chainlit
-.chainlit/.DS_Store
-.chainlit/translations/
-chainlit.md
-
-# Exports
+# Project specific
 exports/
-*.json
-*.csv
-
-# Unstructured (separate repo)
-unstructured/
-
-# Logs
-*.log
+data/
 logs/
+backups/
+*.log
+
+# Docker
+.dockerignore
 
 # Temporary files
 *.tmp
 *.temp
 temp/
-tmp/
+tmp/unstructured/

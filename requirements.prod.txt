@@ -2,6 +2,9 @@
 chainlit==2.6.8
 unstructured[all-docs]==0.12.4
 
+# OpenAI Integration
+openai==1.3.0
+
 # Database
 psycopg2-binary==2.9.7
 sqlalchemy==2.0.23

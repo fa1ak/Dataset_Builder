@@ -13,6 +13,7 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 - **Mobile Friendly**: Works on desktop and mobile devices
 - **Robust Processing**: Handles processing errors gracefully without crashing
 - **Docker Ready**: Easy setup with Docker and Docker Compose
+- **🤖 AI-Powered Analysis**: OpenAI integration for summarization, analysis, and content generation
 
 ## Quick Start (Docker - Recommended)
 
@@ -42,6 +43,40 @@ A powerful, user-friendly tool for processing and extracting structured data fro
 4. **Access the tool**
    - Open your browser and go to: `http://localhost:8000`
    - The tool is ready to use!
+
+## 🤖 AI Features Setup
+
+### OpenAI Integration
+The tool now includes powerful AI features powered by OpenAI:
+
+- **Document Summarization**: Generate concise summaries of processed documents
+- **Content Analysis**: Analyze documents for insights and patterns
+- **Key Information Extraction**: Extract dates, names, numbers, and important facts
+- **Question Answering**: Ask questions about your documents
+- **Content Generation**: Generate reports, outlines, and recommendations
+
+### Setup AI Features
+```bash
+# 1. Get OpenAI API key from https://platform.openai.com/api-keys
+# 2. Run the setup script
+./setup_openai.sh
+
+# 3. Edit .env file with your API key
+nano .env
+
+# 4. Install OpenAI dependencies
+pip install openai python-dotenv
+
+# 5. Restart the application
+```
+
+### AI Commands
+- `ai help` - Show AI features help
+- `ai summarize` - Generate document summary
+- `ai analyze` - Analyze document content
+- `ai extract` - Extract key information
+- `ai questions "question1" "question2"` - Answer specific questions
+- `ai generate report` - Generate a report from documents
 
 ## 🌐 Production Deployment
 
